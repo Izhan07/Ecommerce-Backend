@@ -46,6 +46,64 @@ const toggleSubscription = asyncHandler( async (req, res) => {
     )
 })
 
+const getChannelSubscribers = asyncHandler( async (req, res) => {
+    const {username} = req.params
+    if(!username.trim()){
+        throw new ApiError(401, "Invalid Username")
+    }
+    const user = await User.findOne({
+        username
+    })
+    if(!user){
+        throw new ApiError(401, "user does exist")
+    }
+    const subscribers = await Subscription.find({
+        channel: user._id,
+    })
+
+    return res
+    .status(201)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                subscribers
+            },
+            "user Subscribers fetched successfully"
+        )
+    )
+})
+
+const getChannelfollowing = asyncHandler( async (req, res) => {
+    const {username} = req.params
+    if(!username.trim()){
+        throw new ApiError(401, "Invalid Username")
+    }
+    const user = await User.findOne({
+        username
+    })
+    if(!user){
+        throw new ApiError(401, "user does exist")
+    }
+    const followings = await Subscription.find({
+        subscriber: user._id,
+    })
+
+    return res
+    .status(201)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                followings
+            },
+            "user following fetched successfully"
+        )
+    )
+})
+
 export{
-    toggleSubscription
+    toggleSubscription,
+    getChannelSubscribers,
+    getChannelfollowing
 }
