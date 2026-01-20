@@ -283,7 +283,8 @@ const updateAvatar = asyncHandler( async (req, res) => {
 })
 
 const getUserChannelProfile = asyncHandler( async (req, res) => {
-    const username = req.params
+    const {username} = req.params
+    console.log(username)
     if(!username.trim()){
         throw new ApiError(400, "Invalid User Name")
     }
@@ -311,20 +312,22 @@ const getUserChannelProfile = asyncHandler( async (req, res) => {
         },
         {
             $addFields:{
-                $subscribersCount:{
+                subscribersCount:{
                     $size: "$subscribers"
                 },
-                $subscribedToCount:{
+                subscribedToCount:{
                     $size: "$subsceribedTo"
                 },
-                $isSubscribed:{
+                isSubscribed:{
                     $cond:{
-                        if:{$in:[req.user?._id, "subscribers.subscriber"]},
+                        if:{$in:[req.user?._id, "$subscribers.subscriber"]},
                         then: true,
                         else: false
                     }
                 }
-            },
+            }
+        },
+        {
             $project:{
                 username: 1,
                 fullName: 1,
@@ -336,14 +339,14 @@ const getUserChannelProfile = asyncHandler( async (req, res) => {
             }
         }
     ])
-
-    if(!channel.lenght){
+    console.log(channel)
+    if(!channel){
         throw new ApiError(400, "channel does not exist")
     }
 
     return res
-    .status(201),
-    json(
+    .status(201)
+    .json(
         new ApiResponse(
             200,
             {

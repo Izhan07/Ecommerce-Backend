@@ -6,14 +6,14 @@ import { User } from "../models/user.model.js";
 import { isValidObjectId } from "mongoose";
 
 const toggleSubscription = asyncHandler( async (req, res) => {
-    const username = req.params
-    
-    if(!username.trim()){
+    const {username} = req.params
+    console.log(username)
+    if(!username?.trim()){
         throw new ApiError(400, "Invalid username")
     }
-    const user = await User.findOne(
-        username
-    )
+    const user = await User.findOne({
+         username
+    })
     if(!user){
         throw new ApiError(401, "user does not exist")
     }
@@ -24,10 +24,11 @@ const toggleSubscription = asyncHandler( async (req, res) => {
         channel: user?._id,
         subscriber: req.user?._id
     })
+    let subscribed;
     if(checkSubscription){
-        const subscribed = await Subscription.findByIdAndDelete(checkSubscription?._id)
+         subscribed = await Subscription.findByIdAndDelete(checkSubscription?._id)
     }else{
-        const subscribed = await Subscription.create({
+         subscribed = await Subscription.create({
             channel: user?._id,
             subscriber: req.user?._id
         })
