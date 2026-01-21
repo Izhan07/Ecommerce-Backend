@@ -1,5 +1,6 @@
 import {v2 as cloudinary} from 'cloudinary';
 import fs from "fs";
+import { ApiError } from './Apierror.js';
 
 
 
@@ -18,11 +19,10 @@ const uploadOnCloudinary = async (localFilePath)=>{
       resource_type: "auto"
     })
     if(!response){
-      console.log("something went wrong while uploading file on cloudinary")
+      throw new ApiError(500,"something went wrong while uploading file on cloudinary")
       return null
     }else{
       fs.unlinkSync(localFilePath)
-      console.log("File Uploaded Successfully ",response.url)
       return response
     }
   } catch (error) {
