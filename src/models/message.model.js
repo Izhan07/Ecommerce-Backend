@@ -13,9 +13,23 @@ const messageSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User"
     },
-    reciver:{
+    reciver:[
+        {
         type: Schema.Types.ObjectId,
         ref: "User"
+    }
+    ]
+},
+{
+    isGroup:{
+        type: Boolean,
+        default: false
+    }
+},
+{
+    group:{
+        type: mongoose.Types.ObjectId,
+        ref: "Group"
     }
 },
 {

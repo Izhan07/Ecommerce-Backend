@@ -17,8 +17,10 @@ app.use(cookieParser())
 import userRouter from "./routes/user.routes.js"
 import subscriptionRouter from "./routes/subscription.routes.js"
 import messageRouter from "./routes/message.routes.js"
+import groupRouter from "./routes/group.routes.js"
 
 app.use("/api/v1/users", userRouter)
 app.use("/api/v1/subscription", subscriptionRouter)
 app.use("/api/v1/message", messageRouter)
+app.use("/api/v1/groups", groupRouter)
 export { app }
