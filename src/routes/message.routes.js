@@ -5,11 +5,11 @@ import { getMessagedTo, getMessages, sendMessage } from "../controllers/message.
 
 const router = Router();
 
-router.route("/m/:reciverId").post(verifyJwt,
+router.route("/send").post(verifyJwt,
     upload.array("media"),
     sendMessage
 )
-router.route("/g/:userId").get(verifyJwt, getMessages)
+router.route("/get-messages").get(verifyJwt, getMessages)
 router.route("/profile/chats").get(verifyJwt, getMessagedTo)
 
 export default router

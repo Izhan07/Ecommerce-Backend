@@ -5,16 +5,45 @@ import { Message } from "../models/message.model.js";
 import mongoose, { isValidObjectId } from "mongoose";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import {Group} from "../models/group.model.js"
 
 const sendMessage = asyncHandler( async (req, res) => {
-    const {reciverId} = req.params;
-    if(!isValidObjectId(reciverId)){
-        throw new ApiError(401, "Invalid User Object Id")
+    const {reciverId} = req.body;
+    const { text, groupId } = req.body;
+    if(!reciverId && !groupId){
+        throw new ApiError(400, "reciverId or groupId required")
     }
-    const { text } = req.body;
+    if(reciverId && !isValidObjectId(reciverId)){
+        throw new ApiError(400, "invalid reciverId")
+    }
     const mediaLocalPath = req.files;
     if(!text.trim() && (!mediaLocalPath || mediaLocalPath.length === 0)){
         throw new ApiError(400, "Content required")
+    }
+    let group;
+    let isGroup = false
+    let messagedData = {
+        text: text,
+        sender: req.user?._id,
+        reciver: reciverId,
+        isGroup: isGroup
+    }
+    if(groupId){
+        if(!isValidObjectId(groupId)){
+            throw new ApiError(401, "Invalid group id")
+        }
+        group = await Group.findById(groupId)
+    }
+    let isMember;
+    if(group){
+      isMember = group.members.some(member => member.toString() === req.user?._id.toString());
+      if(!isMember){
+        throw new ApiError(400, "Only admins can send message")
+      }else{
+        messagedData.group = groupId,
+        messagedData.isGroup = true
+        messagedData.reciver = group.members.filter(Id => Id.toString() !== req.user?._id)
+      }
     }
     let media = [];
     if(mediaLocalPath && mediaLocalPath.length > 0){
@@ -25,12 +54,7 @@ const sendMessage = asyncHandler( async (req, res) => {
             }
         }
     }
-    const message = await Message.create({
-        sender: req.user?._id,
-        reciver: reciverId,
-        text: text || "",
-        media: media
-    })
+    const message = await Message.create(messagedData)
     if(!message){
         throw new ApiError(500, "Something went wrong while sending message")
     }
@@ -49,11 +73,16 @@ const sendMessage = asyncHandler( async (req, res) => {
 })
 
 const getMessages = asyncHandler ( async (req, res) => {
-    const {userId} = req.params;
-    if(!isValidObjectId(userId)){
-        throw new ApiError(401, "Invalid user Object Id")
+    const {groupId, userId} = req.body;
+    if(!userId && !groupId){
+        throw new ApiError(400, "UserId or GroupId is required")
     }
-    const messages = await Message.aggregate([
+    let messages;
+    if(userId){
+        if(!isValidObjectId(userId)){
+        throw new ApiError(401, "Invalid user Object Id ")
+    }
+         messages = await Message.aggregate([
         {
             $match:{
                 $or:[
@@ -78,6 +107,52 @@ const getMessages = asyncHandler ( async (req, res) => {
             }
         }
     ])
+    }
+    let group;
+    if(groupId){
+         if(!isValidObjectId(groupId)){
+        throw new ApiError(401, "Invalid group Id ")
+    }
+    group = await Group.findOne({
+        _id: groupId,
+        members: req.user._id
+    })
+    }
+    if(group){
+        messages = await Message.aggregate([
+            {
+                $match:{
+                    group: new mongoose.Types.ObjectId(groupId)
+                }
+            },
+            {
+                $lookup:{
+                    from: "users",
+                    localField: "sender",
+                    foreignField: "_id",
+                    as: "senders"
+                }
+            },
+            {
+                $unwind: "$senders"
+            },
+            {
+                $project:{
+                    text: 1,
+                    media: 1,
+                    _id: 1,
+                    reciver: 1,
+                    isGroup: 1,
+                    sender:{
+                        _id: "$senders._id",
+                        username: "$senders.username",
+                        avatar: "$senders.avatar"
+                    }
+                }
+            }
+        ])
+    }
+    
     return res
     .status(201)
     .json(
@@ -98,12 +173,16 @@ const getMessagedTo = asyncHandler( async (req, res) => {
     if(!user){
         throw new ApiError(401, "invalid User")
     }
-    const profiles = await Message.aggregate([
+    const privateChats = await Message.aggregate([
         {
             $match:{
+                isGroup: false,
                 sender: new mongoose.Types.ObjectId(user._id)
             },
            
+        },
+        {
+            $unwind: "$reciver"
         },
         {
             $group: {
@@ -130,6 +209,39 @@ const getMessagedTo = asyncHandler( async (req, res) => {
         }
     ])
 
+    const groupChats = await Message.aggregate([
+        {
+            $match:{
+                isGroup: true,
+                sender: new mongoose.Types.ObjectId(user._id)
+            }
+        },
+        {
+            $group:{
+                _id: "$group"
+            }
+        },
+        {
+            $lookup:{
+                from: "groups",
+                localField: "_id",
+                foreignField: "_id",
+                as: "profile"
+            }
+        },
+        {
+            $unwind: "$profile"
+        },
+        {
+            $project:{
+                "profile.name": 1,
+                "profile.avatar": 1,
+                "profile._id": 1
+            }
+        }
+    ])
+    const profiles = [...privateChats, ...groupChats]
+
     return res
     .status(201)
     .json(
@@ -141,8 +253,8 @@ const getMessagedTo = asyncHandler( async (req, res) => {
             "chats fetched successfully"
         )
     )
-
 })
+
 
 export {
     sendMessage,

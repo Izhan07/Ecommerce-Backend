@@ -18,16 +18,12 @@ const messageSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User"
     }
-    ]
-},
-{
-    isGroup:{
+    ],
+     isGroup:{
         type: Boolean,
         default: false
-    }
-},
-{
-    group:{
+    },
+     group:{
         type: mongoose.Types.ObjectId,
         ref: "Group"
     }
